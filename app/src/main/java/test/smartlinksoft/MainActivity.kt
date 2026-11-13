@@ -36,10 +36,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
@@ -131,6 +127,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             MyApplicationTheme {
                 Box(Modifier.fillMaxSize().background(B0)) {
+                    DotField(Modifier.fillMaxSize())
                     Box(Modifier.fillMaxSize().background(RedOverlay))
                     Scaffold(
                         modifier = Modifier.fillMaxSize(),
@@ -148,28 +145,10 @@ class MainActivity : ComponentActivity() {
                             )
                             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                                 LinkMode.entries.forEach { m ->
-                                    FilterChip(
+                                    IridButton(
+                                        label = m.label,
                                         selected = mode == m,
                                         onClick = { mode = m },
-                                        label = {
-                                            Text(
-                                                m.label.uppercase(),
-                                                fontFamily = Pixel,
-                                                letterSpacing = 1.sp,
-                                            )
-                                        },
-                                        colors = FilterChipDefaults.filterChipColors(
-                                            containerColor = B1,
-                                            labelColor = Tm,
-                                            selectedContainerColor = B2,
-                                            selectedLabelColor = Title,
-                                        ),
-                                        border = FilterChipDefaults.filterChipBorder(
-                                            enabled = true,
-                                            selected = mode == m,
-                                            borderColor = B2,
-                                            selectedBorderColor = IridA,
-                                        ),
                                     )
                                 }
                             }
@@ -208,7 +187,7 @@ class MainActivity : ComponentActivity() {
                 label = { Text("send") },
                 singleLine = true,
             )
-            Button(onClick = { sendLine() }) { Text("send") }
+            IridButton("send", onClick = { sendLine() })
         }
     }
 
@@ -216,8 +195,8 @@ class MainActivity : ComponentActivity() {
     private fun ColumnScope.CapturePane() {
         Text(if (capturePath.isEmpty()) "not logging" else capturePath)
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Button(onClick = { startCapture() }) { Text("start") }
-            Button(onClick = { stopCapture() }) { Text("stop") }
+            IridButton("start", onClick = { startCapture() })
+            IridButton("stop", onClick = { stopCapture() })
         }
         Text(
             "bytes land in the app's files dir. pull with adb or a file manager.",
@@ -229,15 +208,15 @@ class MainActivity : ComponentActivity() {
     private fun ColumnScope.MediaPane() {
         Text("sends 4D 43 <cmd> over USB. also fires the media key on this phone.")
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Button(onClick = { media(LinkPackets.PREV) }) { Text("prev") }
-            Button(onClick = { media(LinkPackets.PLAY_PAUSE) }) { Text("play") }
-            Button(onClick = { media(LinkPackets.NEXT) }) { Text("next") }
+            IridButton("prev", onClick = { media(LinkPackets.PREV) })
+            IridButton("play", onClick = { media(LinkPackets.PLAY_PAUSE) })
+            IridButton("next", onClick = { media(LinkPackets.NEXT) })
         }
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Button(onClick = { media(LinkPackets.VOL_DOWN) }) { Text("vol-") }
-            Button(onClick = { media(LinkPackets.VOL_UP) }) { Text("vol+") }
+            IridButton("vol-", onClick = { media(LinkPackets.VOL_DOWN) })
+            IridButton("vol+", onClick = { media(LinkPackets.VOL_UP) })
         }
-        Button(onClick = { scanBle() }) { Text("scan ble") }
+        IridButton("scan ble", onClick = { scanBle() })
     }
 
     @Composable
@@ -245,11 +224,11 @@ class MainActivity : ComponentActivity() {
         Text("heartbeat window: ${sleepSec}s. phone asks for low-power priority. watch has to accept.")
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             listOf(4, 10, 30).forEach { s ->
-                Button(onClick = { sleepSec = s }) { Text("${s}s") }
+                IridButton("${s}s", onClick = { sleepSec = s })
             }
         }
-        Button(onClick = { sendSleep() }) { Text("send sleep window") }
-        Button(onClick = { scanBle() }) { Text("scan ble") }
+        IridButton("send sleep window", onClick = { sendSleep() })
+        IridButton("scan ble", onClick = { scanBle() })
     }
 
     override fun onNewIntent(intent: Intent) {
