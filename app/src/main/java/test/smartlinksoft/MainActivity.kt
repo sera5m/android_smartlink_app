@@ -32,11 +32,29 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.ui.graphics.Color
+import test.smartlinksoft.ui.theme.B0
+import test.smartlinksoft.ui.theme.B1
+import test.smartlinksoft.ui.theme.B2
+import test.smartlinksoft.ui.theme.IridA
+import test.smartlinksoft.ui.theme.IridB
+import test.smartlinksoft.ui.theme.Pixel
+import test.smartlinksoft.ui.theme.RedOverlay
+import test.smartlinksoft.ui.theme.Title
+import test.smartlinksoft.ui.theme.Tm
+import test.smartlinksoft.ui.theme.Tx
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -44,6 +62,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import test.smartlinksoft.ui.theme.MyApplicationTheme
 import java.io.File
@@ -111,26 +130,56 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             MyApplicationTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { pad ->
-                    Column(
-                        Modifier.padding(pad).padding(12.dp).fillMaxSize(),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            LinkMode.entries.forEach { m ->
-                                FilterChip(
-                                    selected = mode == m,
-                                    onClick = { mode = m },
-                                    label = { Text(m.label) }
-                                )
+                Box(Modifier.fillMaxSize().background(B0)) {
+                    Box(Modifier.fillMaxSize().background(RedOverlay))
+                    Scaffold(
+                        modifier = Modifier.fillMaxSize(),
+                        containerColor = Color.Transparent,
+                    ) { pad ->
+                        Column(
+                            Modifier.padding(pad).padding(12.dp).fillMaxSize(),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(
+                                "SMARTLINK",
+                                color = Title,
+                                fontFamily = Pixel,
+                                letterSpacing = 2.sp,
+                            )
+                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                LinkMode.entries.forEach { m ->
+                                    FilterChip(
+                                        selected = mode == m,
+                                        onClick = { mode = m },
+                                        label = {
+                                            Text(
+                                                m.label.uppercase(),
+                                                fontFamily = Pixel,
+                                                letterSpacing = 1.sp,
+                                            )
+                                        },
+                                        colors = FilterChipDefaults.filterChipColors(
+                                            containerColor = B1,
+                                            labelColor = Tm,
+                                            selectedContainerColor = B2,
+                                            selectedLabelColor = Title,
+                                        ),
+                                        border = FilterChipDefaults.filterChipBorder(
+                                            enabled = true,
+                                            selected = mode == m,
+                                            borderColor = B2,
+                                            selectedBorderColor = IridA,
+                                        ),
+                                    )
+                                }
                             }
-                        }
-                        Text(status)
-                        when (mode) {
-                            LinkMode.Terminal -> TerminalPane()
-                            LinkMode.Capture -> CapturePane()
-                            LinkMode.Media -> MediaPane()
-                            LinkMode.Sleep -> SleepPane()
+                            Text(status, color = Tm, fontFamily = Pixel)
+                            when (mode) {
+                                LinkMode.Terminal -> TerminalPane()
+                                LinkMode.Capture -> CapturePane()
+                                LinkMode.Media -> MediaPane()
+                                LinkMode.Sleep -> SleepPane()
+                            }
                         }
                     }
                 }
@@ -146,7 +195,8 @@ class MainActivity : ComponentActivity() {
         SelectionContainer(Modifier.weight(1f)) {
             Text(
                 log.ifEmpty { "(no data yet)" },
-                fontFamily = FontFamily.Monospace,
+                fontFamily = Pixel,
+                color = Tx,
                 modifier = Modifier.verticalScroll(rememberScrollState())
             )
         }
