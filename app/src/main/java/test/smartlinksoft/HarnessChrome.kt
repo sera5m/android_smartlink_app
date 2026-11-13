@@ -85,54 +85,86 @@ fun iridAngle(): Float {
  */
 @Composable
 fun DotField(modifier: Modifier = Modifier) {
-    val dot = remember { tile(4, 4) { x, y -> if (x % 2 == 0 && y % 2 == 0) 0x668B949E.toInt() else 0 } }
-    val dense = remember { tile(4, 4) { x, y -> if ((x + y) % 2 == 0) 0x558B949E.toInt() else 0 } }
+    // 16px cell, 4px dot. Reads as silkscreen instead of noise.
+    val dot = remember { tile(16, 16) { x, y -> if (x < 4 && y < 4) 0x998B949E.toInt() else 0 } }
     Canvas(modifier) {
         val nc = drawContext.canvas.nativeCanvas
-        val paint = android.graphics.Paint().apply {
-            shader = BitmapShader(dot, Shader.TileMode.REPEAT, Shader.TileMode.REPEAT)
-        }
-        nc.drawRect(0f, 0f, size.width, size.height, paint)
+        nc.drawRect(
+            0f, 0f, size.width, size.height,
+            android.graphics.Paint().apply {
+                shader = BitmapShader(dot, Shader.TileMode.REPEAT, Shader.TileMode.REPEAT)
+            },
+        )
 
-        // Diagonal bands, same idea as the old mask-image stripe.
-        val band = android.graphics.Paint().apply {
-            shader = BitmapShader(dense, Shader.TileMode.REPEAT, Shader.TileMode.REPEAT)
-        }
-        val stripe = 80f
-        var x = -size.height
-        while (x < size.width) {
-            nc.save()
-            nc.clipRect(x, 0f, x + stripe * 0.28f, size.height)
-            nc.rotate(28f, size.width / 2f, size.height / 2f)
-            nc.drawRect(-size.height, -size.height, size.width + size.height, size.height + size.height, band)
-            nc.restore()
-            x += stripe
-        }
-
-        // Abstract grey veins. Short right-angle runs, like the old SVG.
-        val vein = android.graphics.Paint().apply {
-            color = 0x668B949E.toInt()
-            strokeWidth = 1f
+        val slant = android.graphics.Paint().apply {
+            color = 0x558B949E.toInt()
+            strokeWidth = 1.5f
             style = android.graphics.Paint.Style.STROKE
             isAntiAlias = false
         }
-        val dark = android.graphics.Paint(vein).apply { color = 0x33050505 }
-        val runs = listOf(
-            floatArrayOf(0f, 0f, 0f, 18f, 22f, 18f, 22f, 40f),
-            floatArrayOf(70f, 0f, 70f, 28f, 54f, 28f, 54f, 48f),
-            floatArrayOf(140f, 0f, 140f, 12f, 168f, 12f, 168f, 36f),
-            floatArrayOf(220f, 0f, 220f, 32f, 196f, 32f, 196f, 50f),
-            floatArrayOf(310f, 0f, 310f, 16f, 340f, 16f, 340f, 42f),
-        )
-        var ox = 0f
-        while (ox < size.width + 40f) {
-            runs.forEachIndexed { i, r ->
-                val shifted = FloatArray(r.size) { k -> if (k % 2 == 0) r[k] + ox else r[k] }
-                nc.drawLines(shifted, if (i % 2 == 0) vein else dark)
+        val step = 72f
+        var x = -size.height
+        while (x < size.width + size.height) {
+            nc.drawLine(x, 0f, x + size.height * 0.55f, size.height, slant)
+            x += step
+        }
+
+        val ring = android.graphics.Paint().apply {
+            color = 0x668B949E.toInt()
+            strokeWidth = 1.5f
+            style = android.graphics.Paint.Style.STROKE
+            isAntiAlias = false
+        }
+        val fill = android.graphics.Paint().apply {
+            color = 0x338B949E.toInt()
+            style = android.graphics.Paint.Style.FILL
+            isAntiAlias = false
+        }
+        val cols = (size.width / 96f).toInt().coerceAtLeast(1)
+        val rows = (size.height / 140f).toInt().coerceAtLeast(1)
+        for (r in 0..rows) {
+            for (c in 0..cols) {
+                val cx = 48f + c * 96f
+                val cy = 70f + r * 140f + if (c % 2 == 0) 0f else 36f
+                nc.drawCircle(cx, cy, 7f, ring)
+                nc.drawCircle(cx, cy, 2f, fill)
             }
-            ox += 360f
         }
     }
+}
+
+/** Black panel with a 16px grid. Important blocks sit on this, over the field. */
+@Composable
+fun GridPanel(
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
+    val shape = remember { ChamferShape(10.dp) }
+    Box(
+        modifier
+            .clip(shape)
+            .drawBehind {
+                drawRect(B0)
+                val step = 16.dp.toPx()
+                val paint = android.graphics.Paint().apply {
+                    color = 0xFF161616.toInt()
+                    strokeWidth = 1f
+                    isAntiAlias = false
+                }
+                val nc = drawContext.canvas.nativeCanvas
+                var x = 0f
+                while (x <= size.width) {
+                    nc.drawLine(x, 0f, x, size.height, paint)
+                    x += step
+                }
+                var y = 0f
+                while (y <= size.height) {
+                    nc.drawLine(0f, y, size.width, y, paint)
+                    y += step
+                }
+            }
+            .padding(12.dp),
+    ) { content() }
 }
 
 private fun tile(w: Int, h: Int, pixel: (Int, Int) -> Int): Bitmap {

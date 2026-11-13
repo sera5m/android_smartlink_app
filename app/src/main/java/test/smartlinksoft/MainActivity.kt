@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.SelectionContainer
@@ -171,13 +172,15 @@ class MainActivity : ComponentActivity() {
     // not a property of Modifier itself.
     @Composable
     private fun ColumnScope.TerminalPane() {
-        SelectionContainer(Modifier.weight(1f)) {
-            Text(
-                log.ifEmpty { "(no data yet)" },
-                fontFamily = Pixel,
-                color = Tx,
-                modifier = Modifier.verticalScroll(rememberScrollState())
-            )
+        GridPanel(Modifier.weight(1f).fillMaxWidth()) {
+            SelectionContainer {
+                Text(
+                    log.ifEmpty { "(no data yet)" },
+                    fontFamily = Pixel,
+                    color = Tx,
+                    modifier = Modifier.verticalScroll(rememberScrollState())
+                )
+            }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             OutlinedTextField(
@@ -198,10 +201,13 @@ class MainActivity : ComponentActivity() {
             IridButton("start", onClick = { startCapture() })
             IridButton("stop", onClick = { stopCapture() })
         }
-        Text(
-            "bytes land in the app's files dir. pull with adb or a file manager.",
-            modifier = Modifier.weight(1f)
-        )
+        GridPanel(Modifier.weight(1f).fillMaxWidth()) {
+            Text(
+                "bytes land in the app's files dir. pull with adb or a file manager.",
+                color = Tm,
+                fontFamily = Pixel,
+            )
+        }
     }
 
     @Composable
