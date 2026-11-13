@@ -42,9 +42,7 @@ class UsbLink(
             val buf = ByteArray(512)
             while (running.get()) {
                 val n = conn.bulkTransfer(epIn, buf, buf.size, 200)
-                if (n != null && n > 0) {
-                    onText?.invoke(String(buf, 0, n, Charsets.UTF_8))
-                }
+                if (n > 0) onText?.invoke(String(buf, 0, n, Charsets.UTF_8))
             }
         }, "usb-read").also { it.isDaemon = true; it.start() }
         return true
@@ -53,14 +51,12 @@ class UsbLink(
     fun write(text: String): Boolean {
         val ep = epOut ?: return false
         val bytes = text.toByteArray(Charsets.UTF_8)
-        val n = conn.bulkTransfer(ep, bytes, bytes.size, 500)
-        return n == bytes.size
+        return conn.bulkTransfer(ep, bytes, bytes.size, 500) == bytes.size
     }
 
     fun write(bytes: ByteArray): Boolean {
         val ep = epOut ?: return false
-        val n = conn.bulkTransfer(ep, bytes, bytes.size, 500)
-        return n == bytes.size
+        return conn.bulkTransfer(ep, bytes, bytes.size, 500) == bytes.size
     }
 
     override fun close() {
