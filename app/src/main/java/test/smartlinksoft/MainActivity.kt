@@ -25,6 +25,8 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -45,10 +47,10 @@ import androidx.compose.ui.graphics.Color
 import test.smartlinksoft.ui.theme.B0
 import test.smartlinksoft.ui.theme.B1
 import test.smartlinksoft.ui.theme.B2
+import test.smartlinksoft.ui.theme.B3
 import test.smartlinksoft.ui.theme.IridA
 import test.smartlinksoft.ui.theme.IridB
 import test.smartlinksoft.ui.theme.Pixel
-import test.smartlinksoft.ui.theme.RedOverlay
 import test.smartlinksoft.ui.theme.Title
 import test.smartlinksoft.ui.theme.Tm
 import test.smartlinksoft.ui.theme.Tx
@@ -73,6 +75,7 @@ enum class LinkMode(val label: String) {
     Capture("capture"),
     Media("media"),
     Sleep("sleep"),
+    Settings("settings"),
 }
 
 /**
@@ -87,6 +90,7 @@ enum class LinkMode(val label: String) {
  *           Android for CONNECTION_PRIORITY_LOW_POWER. The phone cannot
  *           raise the supervision timeout by itself. The watch has to.
  */
+@OptIn(ExperimentalLayoutApi::class)
 class MainActivity : ComponentActivity() {
 
     private lateinit var usb: UsbManager
@@ -99,6 +103,9 @@ class MainActivity : ComponentActivity() {
     private var capture: FileOutputStream? = null
     private var capturePath by mutableStateOf("")
     private var sleepSec by mutableStateOf(30)
+    private val prefs by lazy { getSharedPreferences("smartlink", MODE_PRIVATE) }
+    private var animOn by mutableStateOf(true)
+    private var lowPerf by mutableStateOf(false)
 
     private val actionPermission = "test.smartlinksoft.USB_PERMISSION"
 
@@ -120,6 +127,8 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         usb = getSystemService(UsbManager::class.java)
+        animOn = prefs.getBoolean("anim", true)
+        lowPerf = prefs.getBoolean("lowperf", false)
         ContextCompat.registerReceiver(
             this, permissionReceiver,
             IntentFilter(actionPermission), ContextCompat.RECEIVER_NOT_EXPORTED
@@ -128,8 +137,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             MyApplicationTheme {
                 Box(Modifier.fillMaxSize().background(B0)) {
-                    DotField(Modifier.fillMaxSize())
-                    Box(Modifier.fillMaxSize().background(RedOverlay))
+                    DotField(Modifier.fillMaxSize(), simple = lowPerf)
                     Scaffold(
                         modifier = Modifier.fillMaxSize(),
                         containerColor = Color.Transparent,
@@ -144,21 +152,23 @@ class MainActivity : ComponentActivity() {
                                 fontFamily = Pixel,
                                 letterSpacing = 2.sp,
                             )
-                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                                 LinkMode.entries.forEach { m ->
                                     IridButton(
                                         label = m.label,
                                         selected = mode == m,
                                         onClick = { mode = m },
+                                        animate = animOn && !lowPerf,
                                     )
                                 }
                             }
-                            Text(status, color = Tm, fontFamily = Pixel)
+                            Text(status, color = Title, fontFamily = Pixel)
                             when (mode) {
                                 LinkMode.Terminal -> TerminalPane()
                                 LinkMode.Capture -> CapturePane()
                                 LinkMode.Media -> MediaPane()
                                 LinkMode.Sleep -> SleepPane()
+                                LinkMode.Settings -> SettingsPane()
                             }
                         }
                     }
@@ -177,7 +187,7 @@ class MainActivity : ComponentActivity() {
                 Text(
                     log.ifEmpty { "(no data yet)" },
                     fontFamily = Pixel,
-                    color = Tx,
+                    color = Title,
                     modifier = Modifier.verticalScroll(rememberScrollState())
                 )
             }
@@ -187,19 +197,34 @@ class MainActivity : ComponentActivity() {
                 value = draft,
                 onValueChange = { draft = it },
                 modifier = Modifier.weight(1f),
-                label = { Text("send") },
+                label = { Text("send", color = Tm, fontFamily = Pixel) },
                 singleLine = true,
+                textStyle = androidx.compose.ui.text.TextStyle(
+                    fontFamily = Pixel, color = Title, fontSize = 12.sp,
+                ),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor = androidx.compose.ui.graphics.Color(0x88161616),
+                    unfocusedContainerColor = androidx.compose.ui.graphics.Color(0x66161616),
+                    disabledContainerColor = androidx.compose.ui.graphics.Color(0x44161616),
+                    focusedTextColor = Title,
+                    unfocusedTextColor = Title,
+                    cursorColor = Title,
+                    focusedBorderColor = IridA,
+                    unfocusedBorderColor = B3,
+                    focusedLabelColor = Title,
+                    unfocusedLabelColor = Tm,
+                ),
             )
-            IridButton("send", onClick = { sendLine() })
+            IridButton(animate = animOn && !lowPerf, "send", onClick = { sendLine() })
         }
     }
 
     @Composable
     private fun ColumnScope.CapturePane() {
-        Text(if (capturePath.isEmpty()) "not logging" else capturePath)
+        Text(if (capturePath.isEmpty()) "not logging" else capturePath, color = Title, fontFamily = Pixel)
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            IridButton("start", onClick = { startCapture() })
-            IridButton("stop", onClick = { stopCapture() })
+            IridButton(animate = animOn && !lowPerf, "start", onClick = { startCapture() })
+            IridButton(animate = animOn && !lowPerf, "stop", onClick = { stopCapture() })
         }
         GridPanel(Modifier.weight(1f).fillMaxWidth()) {
             Text(
@@ -212,29 +237,63 @@ class MainActivity : ComponentActivity() {
 
     @Composable
     private fun ColumnScope.MediaPane() {
-        Text("sends 4D 43 <cmd> over USB. also fires the media key on this phone.")
+        Text("sends 4D 43 <cmd> over USB. also fires the media key on this phone.", color = Tm, fontFamily = Pixel)
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            IridButton("prev", onClick = { media(LinkPackets.PREV) })
-            IridButton("play", onClick = { media(LinkPackets.PLAY_PAUSE) })
-            IridButton("next", onClick = { media(LinkPackets.NEXT) })
+            IridButton(animate = animOn && !lowPerf, "prev", onClick = { media(LinkPackets.PREV) })
+            IridButton(animate = animOn && !lowPerf, "play", onClick = { media(LinkPackets.PLAY_PAUSE) })
+            IridButton(animate = animOn && !lowPerf, "next", onClick = { media(LinkPackets.NEXT) })
         }
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            IridButton("vol-", onClick = { media(LinkPackets.VOL_DOWN) })
-            IridButton("vol+", onClick = { media(LinkPackets.VOL_UP) })
+            IridButton(animate = animOn && !lowPerf, "vol-", onClick = { media(LinkPackets.VOL_DOWN) })
+            IridButton(animate = animOn && !lowPerf, "vol+", onClick = { media(LinkPackets.VOL_UP) })
         }
-        IridButton("scan ble", onClick = { scanBle() })
+        IridButton(animate = animOn && !lowPerf, "scan ble", onClick = { scanBle() })
     }
 
     @Composable
     private fun ColumnScope.SleepPane() {
-        Text("heartbeat window: ${sleepSec}s. phone asks for low-power priority. watch has to accept.")
+        Text("heartbeat window: ${sleepSec}s. phone asks for low-power priority. watch has to accept.", color = Tm, fontFamily = Pixel)
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             listOf(4, 10, 30).forEach { s ->
-                IridButton("${s}s", onClick = { sleepSec = s })
+                IridButton(animate = animOn && !lowPerf, "${s}s", onClick = { sleepSec = s })
             }
         }
-        IridButton("send sleep window", onClick = { sendSleep() })
-        IridButton("scan ble", onClick = { scanBle() })
+        IridButton(animate = animOn && !lowPerf, "send sleep window", onClick = { sendSleep() })
+        IridButton(animate = animOn && !lowPerf, "scan ble", onClick = { scanBle() })
+    }
+
+
+    @Composable
+    private fun ColumnScope.SettingsPane() {
+        val spin = animOn && !lowPerf
+        Text("low-perf drops the spin and the extra field art.", color = Tm, fontFamily = Pixel)
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            IridButton(
+                if (animOn) "anim on" else "anim off",
+                onClick = {
+                    animOn = !animOn
+                    prefs.edit().putBoolean("anim", animOn).apply()
+                },
+                selected = animOn,
+                animate = spin,
+            )
+            IridButton(
+                if (lowPerf) "low perf" else "full",
+                onClick = {
+                    lowPerf = !lowPerf
+                    prefs.edit().putBoolean("lowperf", lowPerf).apply()
+                },
+                selected = lowPerf,
+                animate = spin,
+            )
+        }
+        GridPanel(Modifier.weight(1f).fillMaxWidth()) {
+            Text(
+                "anim: iridescent stroke spins.\nlow perf: static stroke, dots only, no slanted lines or circles.\nboth stick across launches.",
+                color = Title,
+                fontFamily = Pixel,
+            )
+        }
     }
 
     override fun onNewIntent(intent: Intent) {

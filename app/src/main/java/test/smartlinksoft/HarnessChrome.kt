@@ -68,7 +68,8 @@ class ChamferShape(private val cut: Dp = 8.dp) : Shape {
 private val IridColors = listOf(IridA, IridB, IridC, IridD, IridA)
 
 @Composable
-fun iridAngle(): Float {
+fun iridAngle(enabled: Boolean): Float {
+    if (!enabled) return 0f
     val t = rememberInfiniteTransition(label = "irid")
     val a by t.animateFloat(
         initialValue = 0f,
@@ -84,7 +85,7 @@ fun iridAngle(): Float {
  * and a few grey vein strokes. Drawn once into tiles so it does not churn.
  */
 @Composable
-fun DotField(modifier: Modifier = Modifier) {
+fun DotField(modifier: Modifier = Modifier, simple: Boolean = false) {
     // 16px cell, 4px dot. Reads as silkscreen instead of noise.
     val dot = remember { tile(16, 16) { x, y -> if (x < 4 && y < 4) 0x998B949E.toInt() else 0 } }
     Canvas(modifier) {
@@ -96,6 +97,7 @@ fun DotField(modifier: Modifier = Modifier) {
             },
         )
 
+        if (!simple) {
         val slant = android.graphics.Paint().apply {
             color = 0x558B949E.toInt()
             strokeWidth = 1.5f
@@ -129,6 +131,7 @@ fun DotField(modifier: Modifier = Modifier) {
                 nc.drawCircle(cx, cy, 7f, ring)
                 nc.drawCircle(cx, cy, 2f, fill)
             }
+        }
         }
     }
 }
@@ -180,8 +183,9 @@ fun IridButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     selected: Boolean = false,
+    animate: Boolean = true,
 ) {
-    val angle = iridAngle()
+    val angle = iridAngle(animate)
     val shape = remember { ChamferShape(7.dp) }
     val fill = if (selected) B1 else B0
     Box(

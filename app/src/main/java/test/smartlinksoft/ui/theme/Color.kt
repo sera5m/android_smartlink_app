@@ -8,8 +8,8 @@ val B1 = Color(0xFF0C0C0C)
 val B2 = Color(0xFF161616)
 val B3 = Color(0xFF212121)
 
-val Tx = Color(0xFF1A3A6B)
-val Tm = Color(0xFF2A5A9A)
+val Tx = Color(0xFF6A9AD4)   // brighter so it reads on the grey field
+val Tm = Color(0xFF8BB4E8)
 val Title = Color(0xFFD4B5FF)
 val RedOverlay = Color(0x522A0000) // #2A0000 at 32%
 
