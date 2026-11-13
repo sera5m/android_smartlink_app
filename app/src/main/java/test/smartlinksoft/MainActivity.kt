@@ -215,7 +215,7 @@ class MainActivity : ComponentActivity() {
                     unfocusedLabelColor = Tm,
                 ),
             )
-            IridButton(animate = animOn && !lowPerf, "send", onClick = { sendLine() })
+            IridButton("send", onClick = { sendLine() }, animate = animOn && !lowPerf)
         }
     }
 
@@ -223,8 +223,8 @@ class MainActivity : ComponentActivity() {
     private fun ColumnScope.CapturePane() {
         Text(if (capturePath.isEmpty()) "not logging" else capturePath, color = Title, fontFamily = Pixel)
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            IridButton(animate = animOn && !lowPerf, "start", onClick = { startCapture() })
-            IridButton(animate = animOn && !lowPerf, "stop", onClick = { stopCapture() })
+            IridButton("start", onClick = { startCapture() }, animate = animOn && !lowPerf)
+            IridButton("stop", onClick = { stopCapture() }, animate = animOn && !lowPerf)
         }
         GridPanel(Modifier.weight(1f).fillMaxWidth()) {
             Text(
@@ -239,15 +239,15 @@ class MainActivity : ComponentActivity() {
     private fun ColumnScope.MediaPane() {
         Text("sends 4D 43 <cmd> over USB. also fires the media key on this phone.", color = Tm, fontFamily = Pixel)
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            IridButton(animate = animOn && !lowPerf, "prev", onClick = { media(LinkPackets.PREV) })
-            IridButton(animate = animOn && !lowPerf, "play", onClick = { media(LinkPackets.PLAY_PAUSE) })
-            IridButton(animate = animOn && !lowPerf, "next", onClick = { media(LinkPackets.NEXT) })
+            IridButton("prev", onClick = { media(LinkPackets.PREV) }, animate = animOn && !lowPerf)
+            IridButton("play", onClick = { media(LinkPackets.PLAY_PAUSE) }, animate = animOn && !lowPerf)
+            IridButton("next", onClick = { media(LinkPackets.NEXT) }, animate = animOn && !lowPerf)
         }
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            IridButton(animate = animOn && !lowPerf, "vol-", onClick = { media(LinkPackets.VOL_DOWN) })
-            IridButton(animate = animOn && !lowPerf, "vol+", onClick = { media(LinkPackets.VOL_UP) })
+            IridButton("vol-", onClick = { media(LinkPackets.VOL_DOWN) }, animate = animOn && !lowPerf)
+            IridButton("vol+", onClick = { media(LinkPackets.VOL_UP) }, animate = animOn && !lowPerf)
         }
-        IridButton(animate = animOn && !lowPerf, "scan ble", onClick = { scanBle() })
+        IridButton("scan ble", onClick = { scanBle() }, animate = animOn && !lowPerf)
     }
 
     @Composable
@@ -255,11 +255,11 @@ class MainActivity : ComponentActivity() {
         Text("heartbeat window: ${sleepSec}s. phone asks for low-power priority. watch has to accept.", color = Tm, fontFamily = Pixel)
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             listOf(4, 10, 30).forEach { s ->
-                IridButton(animate = animOn && !lowPerf, "${s}s", onClick = { sleepSec = s })
+                IridButton("${s}s", onClick = { sleepSec = s }, animate = animOn && !lowPerf)
             }
         }
-        IridButton(animate = animOn && !lowPerf, "send sleep window", onClick = { sendSleep() })
-        IridButton(animate = animOn && !lowPerf, "scan ble", onClick = { scanBle() })
+        IridButton("send sleep window", onClick = { sendSleep() }, animate = animOn && !lowPerf)
+        IridButton("scan ble", onClick = { scanBle() }, animate = animOn && !lowPerf)
     }
 
 
