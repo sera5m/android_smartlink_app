@@ -2,7 +2,6 @@ package test.smartlinksoft
 
 import android.Manifest
 import android.app.PendingIntent
-import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattCallback
 import android.bluetooth.BluetoothGattCharacteristic
@@ -26,9 +25,9 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.SelectionContainer
@@ -38,6 +37,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -85,7 +85,6 @@ class MainActivity : ComponentActivity() {
     private var sleepSec by mutableStateOf(30)
 
     private val actionPermission = "test.smartlinksoft.USB_PERMISSION"
-    private val timeFmt = SimpleDateFormat("HH:mm:ss", Locale.US)
 
     private val btPermission = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -140,8 +139,10 @@ class MainActivity : ComponentActivity() {
         intent.deviceExtra()?.let { requestAndOpen(it) } ?: scan()
     }
 
-    @androidx.compose.runtime.Composable
-    private fun TerminalPane() {
+    // ColumnScope so Modifier.weight resolves. It is a scope function,
+    // not a property of Modifier itself.
+    @Composable
+    private fun ColumnScope.TerminalPane() {
         SelectionContainer(Modifier.weight(1f)) {
             Text(
                 log.ifEmpty { "(no data yet)" },
@@ -161,8 +162,8 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    @androidx.compose.runtime.Composable
-    private fun CapturePane() {
+    @Composable
+    private fun ColumnScope.CapturePane() {
         Text(if (capturePath.isEmpty()) "not logging" else capturePath)
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             Button(onClick = { startCapture() }) { Text("start") }
@@ -174,8 +175,8 @@ class MainActivity : ComponentActivity() {
         )
     }
 
-    @androidx.compose.runtime.Composable
-    private fun MediaPane() {
+    @Composable
+    private fun ColumnScope.MediaPane() {
         Text("sends 4D 43 <cmd> over USB. also fires the media key on this phone.")
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             Button(onClick = { media(LinkPackets.PREV) }) { Text("prev") }
@@ -189,8 +190,8 @@ class MainActivity : ComponentActivity() {
         Button(onClick = { scanBle() }) { Text("scan ble") }
     }
 
-    @androidx.compose.runtime.Composable
-    private fun SleepPane() {
+    @Composable
+    private fun ColumnScope.SleepPane() {
         Text("heartbeat window: ${sleepSec}s. phone asks for low-power priority. watch has to accept.")
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             listOf(4, 10, 30).forEach { s ->
