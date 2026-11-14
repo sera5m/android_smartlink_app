@@ -76,6 +76,7 @@ enum class LinkMode(val label: String) {
     Media("media"),
     Sleep("sleep"),
     Settings("settings"),
+    About("about"),
 }
 
 /**
@@ -169,6 +170,7 @@ class MainActivity : ComponentActivity() {
                                 LinkMode.Media -> MediaPane()
                                 LinkMode.Sleep -> SleepPane()
                                 LinkMode.Settings -> SettingsPane()
+                                LinkMode.About -> AboutPane()
                             }
                         }
                     }
@@ -293,6 +295,36 @@ class MainActivity : ComponentActivity() {
                 color = Title,
                 fontFamily = Pixel,
             )
+        }
+    }
+
+
+    @Composable
+    private fun ColumnScope.AboutPane() {
+        GridPanel(Modifier.weight(1f).fillMaxWidth()) {
+            Column(
+                Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Text("ABOUT THIS APP", color = Title, fontFamily = Pixel, letterSpacing = 1.sp)
+                Text(
+                    "This software allows you to connect your phone or computer via wireless or wired connection to the Oiria OS smartwatch based on the ESP32-S3, enabling you to unlock the full capability of this tool.",
+                    color = Tm,
+                    fontFamily = Pixel,
+                )
+                Text("WHO MADE IT", color = Title, fontFamily = Pixel, letterSpacing = 1.sp)
+                Text(
+                    "Sera5im made this with access to some advanced tooling.",
+                    color = Tm,
+                    fontFamily = Pixel,
+                )
+                Text("WHY", color = Title, fontFamily = Pixel, letterSpacing = 1.sp)
+                Text(
+                    "I'm a big fan of the cyberpunk genre. Real life seems to involve purely the down sides, so I'd rather put the cool gadgets into the world.",
+                    color = Tm,
+                    fontFamily = Pixel,
+                )
+            }
         }
     }
 
