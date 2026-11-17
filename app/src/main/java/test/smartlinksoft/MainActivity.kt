@@ -77,6 +77,7 @@ enum class LinkMode(val label: String) {
     Sleep("sleep"),
     Settings("settings"),
     About("about"),
+    Health("health"),
 }
 
 /**
@@ -107,6 +108,8 @@ class MainActivity : ComponentActivity() {
     private val prefs by lazy { getSharedPreferences("smartlink", MODE_PRIVATE) }
     private var animOn by mutableStateOf(true)
     private var lowPerf by mutableStateOf(false)
+    private var healthWriterId by mutableStateOf("file_csv")
+    private var healthStatus by mutableStateOf("")
 
     private val actionPermission = "test.smartlinksoft.USB_PERMISSION"
 
@@ -130,6 +133,7 @@ class MainActivity : ComponentActivity() {
         usb = getSystemService(UsbManager::class.java)
         animOn = prefs.getBoolean("anim", true)
         lowPerf = prefs.getBoolean("lowperf", false)
+        healthWriterId = prefs.getString("health_writer", "file_csv") ?: "file_csv"
         ContextCompat.registerReceiver(
             this, permissionReceiver,
             IntentFilter(actionPermission), ContextCompat.RECEIVER_NOT_EXPORTED
@@ -171,6 +175,7 @@ class MainActivity : ComponentActivity() {
                                 LinkMode.Sleep -> SleepPane()
                                 LinkMode.Settings -> SettingsPane()
                                 LinkMode.About -> AboutPane()
+                                LinkMode.Health -> HealthPane()
                             }
                         }
                     }
@@ -328,6 +333,43 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+
+    @Composable
+    private fun ColumnScope.HealthPane() {
+        val writer = HealthWriters.byId(healthWriterId)
+        Text("export target", color = Tm, fontFamily = Pixel)
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            HealthWriters.all.forEach { w ->
+                IridButton(
+                    label = w.label,
+                    selected = healthWriterId == w.id,
+                    onClick = {
+                        healthWriterId = w.id
+                        prefs.edit().putString("health_writer", w.id).apply()
+                    },
+                    animate = animOn && !lowPerf,
+                )
+            }
+        }
+        Text(if (healthStatus.isEmpty()) "no samples pushed" else healthStatus, color = Title, fontFamily = Pixel)
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            IridButton("push test", onClick = { pushHealth(HealthSample(bpm = 72, spo2 = 98, rmssdMs = 40, note = "test")) }, animate = animOn && !lowPerf)
+        }
+        GridPanel(Modifier.weight(1f).fillMaxWidth()) {
+            Text(
+                "writers: file csv, file json, health connect (queued until sdk linked), custom endpoint (prefs health_url).\nusb lines matching \"BPM n\" or \"SPO2 n\" are routed here when this mode is open.",
+                color = Tm,
+                fontFamily = Pixel,
+            )
+        }
+    }
+
+    private fun pushHealth(sample: HealthSample) {
+        val writer = HealthWriters.byId(healthWriterId)
+        healthStatus = writer.write(sample, this)
+        status = healthStatus
+    }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
@@ -431,6 +473,33 @@ class MainActivity : ComponentActivity() {
     private fun append(chunk: String) {
         log = (log + chunk).takeLast(8000)
         capture?.write(chunk.toByteArray(Charsets.UTF_8))
+        if (mode == LinkMode.Health) {
+            parseHealthLine(chunk)?.let { pushHealth(it) }
+        }
+    }
+
+    // Very small parser. Accepts "BPM 72", "SPO2 98", "RMSSD 40",
+    // or a single line with any of those tokens.
+    private fun parseHealthLine(line: String): HealthSample? {
+        val t = line.trim()
+        if (t.isEmpty()) return null
+        var bpm: Int? = null
+        var spo2: Int? = null
+        var rmssd: Int? = null
+        val parts = t.split(Regex("\\s+"))
+        var i = 0
+        while (i < parts.size - 1) {
+            val k = parts[i].uppercase()
+            val v = parts[i + 1].toIntOrNull()
+            when (k) {
+                "BPM", "HR" -> bpm = v
+                "SPO2", "O2" -> spo2 = v
+                "RMSSD", "HRV" -> rmssd = v
+            }
+            i++
+        }
+        if (bpm == null && spo2 == null && rmssd == null) return null
+        return HealthSample(bpm = bpm, spo2 = spo2, rmssdMs = rmssd)
     }
 
     private fun scanBle() {
