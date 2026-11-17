@@ -78,6 +78,7 @@ enum class LinkMode(val label: String) {
     Settings("settings"),
     About("about"),
     Health("health"),
+    Control("control"),
 }
 
 /**
@@ -110,6 +111,7 @@ class MainActivity : ComponentActivity() {
     private var lowPerf by mutableStateOf(false)
     private var healthWriterId by mutableStateOf("file_csv")
     private var healthStatus by mutableStateOf("")
+    private var lastHealth by mutableStateOf<HealthSample?>(null)
 
     private val actionPermission = "test.smartlinksoft.USB_PERMISSION"
 
@@ -176,6 +178,7 @@ class MainActivity : ComponentActivity() {
                                 LinkMode.Settings -> SettingsPane()
                                 LinkMode.About -> AboutPane()
                                 LinkMode.Health -> HealthPane()
+                                LinkMode.Control -> ControlPane()
                             }
                         }
                     }
@@ -337,6 +340,12 @@ class MainActivity : ComponentActivity() {
     @Composable
     private fun ColumnScope.HealthPane() {
         val writer = HealthWriters.byId(healthWriterId)
+        // Last pushed sample drives the marionette. Defaults are a resting pose.
+        StickFigure(
+            bpm = lastHealth?.bpm,
+            spo2 = lastHealth?.spo2,
+            modifier = Modifier.size(140.dp).align(androidx.compose.ui.Alignment.CenterHorizontally),
+        )
         Text("export target", color = Tm, fontFamily = Pixel)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             HealthWriters.all.forEach { w ->
@@ -365,9 +374,47 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun pushHealth(sample: HealthSample) {
+        lastHealth = sample
         val writer = HealthWriters.byId(healthWriterId)
         healthStatus = writer.write(sample, this)
         status = healthStatus
+    }
+
+
+    @Composable
+    private fun ColumnScope.ControlPane() {
+        Text("boot role", color = Tm, fontFamily = Pixel)
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            listOf("default", "collaborative", "helper").forEach { role ->
+                IridButton(role, onClick = { sendCmd("/bootseq setconfvar mode $role") }, animate = animOn && !lowPerf)
+            }
+        }
+        IridButton("get mode", onClick = { sendCmd("/bootseq getconfvar mode") }, animate = animOn && !lowPerf)
+        IridButton("status", onClick = { sendCmd("/bootseq status") }, animate = animOn && !lowPerf)
+
+        Text("sensors", color = Tm, fontFamily = Pixel)
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            IridButton("accel", onClick = { sendCmd("/sensor accel") }, animate = animOn && !lowPerf)
+            IridButton("temp", onClick = { sendCmd("/sensor temp") }, animate = animOn && !lowPerf)
+            IridButton("hr", onClick = { sendCmd("/sensor hr") }, animate = animOn && !lowPerf)
+            IridButton("spo2", onClick = { sendCmd("/sensor spo2") }, animate = animOn && !lowPerf)
+        }
+        GridPanel(Modifier.weight(1f).fillMaxWidth()) {
+            SelectionContainer {
+                Text(
+                    log.ifEmpty { "(replies appear here)" },
+                    fontFamily = Pixel,
+                    color = Title,
+                    modifier = Modifier.verticalScroll(rememberScrollState())
+                )
+            }
+        }
+    }
+
+    private fun sendCmd(line: String) {
+        val ok = link?.write(line + "\n") == true
+        append(if (ok) "> $line\n" else "(not open)\n")
+        status = if (ok) "sent $line" else "not open"
     }
 
     override fun onNewIntent(intent: Intent) {
