@@ -2,9 +2,9 @@ package test.smartlinksoft
 
 import android.Manifest
 import android.app.PendingIntent
+import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothGatt
-import android.bluetooth.BluetoothGattCallback
-import android.bluetooth.BluetoothGattCharacteristic
+import android.bluetooth.BluetoothGattDescriptor
 import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothProfile
 import android.bluetooth.le.ScanCallback
@@ -103,6 +103,10 @@ class MainActivity : ComponentActivity() {
     private var draft by mutableStateOf("")
     private var link: UsbLink? = null
     private var gatt: BluetoothGatt? = null
+    private var cmdChar: BluetoothGattCharacteristic? = null
+    private val svcUuid = java.util.UUID.fromString("00000a10-0000-1000-8000-00805f9b34fb")
+    private val cmdUuid = java.util.UUID.fromString("00000a11-0000-1000-8000-00805f9b34fb")
+    private val ntfUuid = java.util.UUID.fromString("00000a12-0000-1000-8000-00805f9b34fb")
     private var capture: FileOutputStream? = null
     private var capturePath by mutableStateOf("")
     private var sleepSec by mutableStateOf(30)
@@ -383,6 +387,7 @@ class MainActivity : ComponentActivity() {
 
     @Composable
     private fun ColumnScope.ControlPane() {
+        IridButton("scan ble", onClick = { scanBle() }, animate = animOn && !lowPerf)
         Text("boot role", color = Tm, fontFamily = Pixel)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             listOf("default", "collaborative", "helper").forEach { role ->
@@ -412,9 +417,26 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun sendCmd(line: String) {
-        val ok = link?.write(line + "\n") == true
-        append(if (ok) "> $line\n" else "(not open)\n")
-        status = if (ok) "sent $line" else "not open"
+        val overUsb = link?.write(line + "\n") == true
+        val overBle = writeBle((line + "\n").toByteArray())
+        append(if (overUsb || overBle) "> $line\n" else "(not open)\n")
+        status = "sent $line  usb=$overUsb ble=$overBle"
+    }
+
+    private fun writeBle(bytes: ByteArray): Boolean {
+        val g = gatt ?: return false
+        val c = cmdChar ?: return false
+        return if (Build.VERSION.SDK_INT >= 33) {
+            g.writeCharacteristic(c, bytes, BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE) ==
+                android.bluetooth.BluetoothStatusCodes.SUCCESS
+        } else {
+            @Suppress("DEPRECATION")
+            c.value = bytes
+            @Suppress("DEPRECATION")
+            c.writeType = BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE
+            @Suppress("DEPRECATION")
+            g.writeCharacteristic(c)
+        }
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -496,8 +518,9 @@ class MainActivity : ComponentActivity() {
     private fun sendSleep() {
         val pkt = LinkPackets.sleep(sleepSec)
         val overUsb = link?.write(pkt) == true
+        val overBle = writeBle(pkt)
         gatt?.requestConnectionPriority(BluetoothGatt.CONNECTION_PRIORITY_LOW_POWER)
-        status = "sent ${LinkPackets.describe(pkt)}  usb=$overUsb  gatt=${gatt != null}"
+        status = "sent ${LinkPackets.describe(pkt)}  usb=$overUsb ble=$overBle"
     }
 
     private fun startCapture() {
@@ -573,13 +596,42 @@ class MainActivity : ComponentActivity() {
 
     private fun connectGatt(result: ScanResult) {
         status = "connecting ${result.device.address}"
-        gatt = result.device.connectGatt(this, false, object : BluetoothGattCallback() {
-            override fun onConnectionStateChange(g: BluetoothGatt, status: Int, newState: Int) {
-                this@MainActivity.status = if (newState == BluetoothProfile.STATE_CONNECTED) {
+        gatt = result.device.connectGatt(this, true, object : BluetoothGattCallback() {
+            override fun onConnectionStateChange(g: BluetoothGatt, st: Int, newState: Int) {
+                if (newState == BluetoothProfile.STATE_CONNECTED) {
+                    this@MainActivity.status = "ble connected ${g.device.address}"
                     g.requestConnectionPriority(BluetoothGatt.CONNECTION_PRIORITY_LOW_POWER)
                     g.discoverServices()
-                    "ble connected ${g.device.address}"
-                } else "ble disconnected"
+                } else {
+                    this@MainActivity.status = "ble disconnected"
+                    cmdChar = null
+                }
+            }
+
+            override fun onServicesDiscovered(g: BluetoothGatt, st: Int) {
+                val svc = g.getService(svcUuid) ?: run {
+                    this@MainActivity.status = "ble: no Oiria service"
+                    return
+                }
+                cmdChar = svc.getCharacteristic(cmdUuid)
+                val ntf = svc.getCharacteristic(ntfUuid)
+                if (ntf != null) {
+                    g.setCharacteristicNotification(ntf, true)
+                    val cccd = ntf.getDescriptor(
+                        java.util.UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
+                    )
+                    if (cccd != null) {
+                        if (Build.VERSION.SDK_INT >= 33) {
+                            g.writeDescriptor(cccd, BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE)
+                        } else {
+                            @Suppress("DEPRECATION")
+                            cccd.value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
+                            @Suppress("DEPRECATION")
+                            g.writeDescriptor(cccd)
+                        }
+                    }
+                }
+                this@MainActivity.status = "ble ready  cmd=${cmdChar != null}"
             }
 
             override fun onCharacteristicChanged(
@@ -589,8 +641,9 @@ class MainActivity : ComponentActivity() {
             ) {
                 append(String(value, Charsets.UTF_8))
             }
-        })
+        }, BluetoothDevice.TRANSPORT_LE)
     }
+
 
     private fun Intent.deviceExtra(): UsbDevice? =
         if (Build.VERSION.SDK_INT >= 33)
